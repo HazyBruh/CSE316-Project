@@ -1,0 +1,98 @@
+def fcfs(processes):
+    processes.sort(key=lambda x: x[1])  # Sort by arrival time
+    time = 0
+    waiting_times, turnaround_times = [], []
+    
+    print("\nGantt Chart (FCFS):")
+    for pid, arrival, burst, priority in processes:
+        start_time = max(time, arrival)
+        end_time = start_time + burst
+        print(f"| {pid} |", end=" ")
+        waiting_times.append(start_time - arrival)
+        turnaround_times.append(end_time - arrival)
+        time = end_time
+    print("\n")
+    calculate_metrics(waiting_times, turnaround_times)
+
+def sjf(processes):
+    processes.sort(key=lambda x: x[2])  # Sort by burst time
+    time = 0
+    waiting_times, turnaround_times = [], []
+    
+    print("\nGantt Chart (SJF):")
+    for pid, arrival, burst, priority in processes:
+        start_time = max(time, arrival)
+        end_time = start_time + burst
+        print(f"| {pid} |", end=" ")
+        waiting_times.append(start_time - arrival)
+        turnaround_times.append(end_time - arrival)
+        time = end_time
+    print("\n")
+    calculate_metrics(waiting_times, turnaround_times)
+
+def priority_scheduling(processes):
+    processes.sort(key=lambda x: x[3])  # Sort by priority
+    time = 0
+    waiting_times, turnaround_times = [], []
+    
+    print("\nGantt Chart (Priority Scheduling):")
+    for pid, arrival, burst, priority in processes:
+        start_time = max(time, arrival)
+        end_time = start_time + burst
+        print(f"| {pid} |", end=" ")
+        waiting_times.append(start_time - arrival)
+        turnaround_times.append(end_time - arrival)
+        time = end_time
+    print("\n")
+    calculate_metrics(waiting_times, turnaround_times)
+
+def round_robin(processes, quantum=2):
+    queue = sorted(processes, key=lambda x: x[1])
+    time, waiting_times, turnaround_times = 0, {}, {}
+    remaining_burst = {p[0]: p[2] for p in processes}
+    
+    print("\nGantt Chart (Round Robin):")
+    while queue:
+        pid, arrival, burst, priority = queue.pop(0)
+        executed_time = min(remaining_burst[pid], quantum)
+        print(f"| {pid} |", end=" ")
+        time += executed_time
+        remaining_burst[pid] -= executed_time
+        
+        if remaining_burst[pid] > 0:
+            queue.append((pid, arrival, remaining_burst[pid], priority))
+        else:
+            turnaround_times[pid] = time - arrival
+            waiting_times[pid] = turnaround_times[pid] - burst
+    print("\n")
+    calculate_metrics(list(waiting_times.values()), list(turnaround_times.values()))
+
+def calculate_metrics(waiting_times, turnaround_times):
+    print(f"Average Waiting Time: {sum(waiting_times) / len(waiting_times):.2f}")
+    print(f"Average Turnaround Time: {sum(turnaround_times) / len(turnaround_times):.2f}")
+
+def main():
+    processes = [
+        ("P1", 0, 5, 2),
+        ("P2", 1, 3, 1),
+        ("P3", 2, 8, 3),
+        ("P4", 3, 6, 4)
+    ]
+    
+    print("Choose scheduling algorithm: 1. FCFS 2. SJF 3. Round Robin 4. Priority Scheduling")
+    choice = int(input("Enter choice (1-4): "))
+    
+    if choice == 1:
+        fcfs(processes)
+    elif choice == 2:
+        sjf(processes)
+    elif choice == 3:
+        quantum = int(input("Enter time quantum for Round Robin: "))
+        round_robin(processes, quantum)
+    elif choice == 4:
+        priority_scheduling(processes)
+    else:
+        print("Invalid choice!")
+
+if __name__ == "__main__":
+    main()
