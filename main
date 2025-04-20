@@ -1,98 +1,251 @@
-def fcfs(processes):
-    processes.sort(key=lambda x: x[1])  # Sort by arrival time
-    time = 0
-    waiting_times, turnaround_times = [], []
-    
-    print("\nGantt Chart (FCFS):")
-    for pid, arrival, burst, priority in processes:
-        start_time = max(time, arrival)
-        end_time = start_time + burst
-        print(f"| {pid} |", end=" ")
-        waiting_times.append(start_time - arrival)
-        turnaround_times.append(end_time - arrival)
-        time = end_time
-    print("\n")
-    calculate_metrics(waiting_times, turnaround_times)
+import tkinter as tk
+from tkinter import messagebox, ttk
 
-def sjf(processes):
-    processes.sort(key=lambda x: x[2])  # Sort by burst time
-    time = 0
-    waiting_times, turnaround_times = [], []
-    
-    print("\nGantt Chart (SJF):")
-    for pid, arrival, burst, priority in processes:
-        start_time = max(time, arrival)
-        end_time = start_time + burst
-        print(f"| {pid} |", end=" ")
-        waiting_times.append(start_time - arrival)
-        turnaround_times.append(end_time - arrival)
-        time = end_time
-    print("\n")
-    calculate_metrics(waiting_times, turnaround_times)
+# Function to calculate and display the Gantt Chart and metrics
+def calculate_metrics_and_display(processes, algorithm, quantum=2):
+    def draw_gantt_chart(gantt_sequence):
+        gantt_canvas.delete("all")
+        if not gantt_sequence:
+            return
 
-def priority_scheduling(processes):
-    processes.sort(key=lambda x: x[3])  # Sort by priority
-    time = 0
-    waiting_times, turnaround_times = [], []
-    
-    print("\nGantt Chart (Priority Scheduling):")
-    for pid, arrival, burst, priority in processes:
-        start_time = max(time, arrival)
-        end_time = start_time + burst
-        print(f"| {pid} |", end=" ")
-        waiting_times.append(start_time - arrival)
-        turnaround_times.append(end_time - arrival)
-        time = end_time
-    print("\n")
-    calculate_metrics(waiting_times, turnaround_times)
+        x = 10
+        y = 30
+        height = 40
+        scale = 30  # pixels per time unit
+        for pid, start, end in gantt_sequence:
+            width = (end - start) * scale
+            gantt_canvas.create_rectangle(x, y, x + width, y + height, fill="#4CAF50", outline="black")
+            gantt_canvas.create_text(x + width / 2, y + height / 2, text=pid, font=("Aptos", 10, "bold"))
+            gantt_canvas.create_text(x, y + height + 10, text=str(start), font=("Aptos", 9))
+            x += width
+        gantt_canvas.create_text(x, y + height + 10, text=str(gantt_sequence[-1][2]), font=("Aptos", 9))
 
-def round_robin(processes, quantum=2):
-    queue = sorted(processes, key=lambda x: x[1])
-    time, waiting_times, turnaround_times = 0, {}, {}
-    remaining_burst = {p[0]: p[2] for p in processes}
-    
-    print("\nGantt Chart (Round Robin):")
-    while queue:
-        pid, arrival, burst, priority = queue.pop(0)
-        executed_time = min(remaining_burst[pid], quantum)
-        print(f"| {pid} |", end=" ")
-        time += executed_time
-        remaining_burst[pid] -= executed_time
-        
-        if remaining_burst[pid] > 0:
-            queue.append((pid, arrival, remaining_burst[pid], priority))
-        else:
-            turnaround_times[pid] = time - arrival
-            waiting_times[pid] = turnaround_times[pid] - burst
-    print("\n")
-    calculate_metrics(list(waiting_times.values()), list(turnaround_times.values()))
+    def fcfs(processes):
+        processes.sort(key=lambda x: x[1])
+        time = 0
+        waiting_times, turnaround_times, gantt_sequence = [], [], []
 
-def calculate_metrics(waiting_times, turnaround_times):
-    print(f"Average Waiting Time: {sum(waiting_times) / len(waiting_times):.2f}")
-    print(f"Average Turnaround Time: {sum(turnaround_times) / len(turnaround_times):.2f}")
+        for pid, arrival, burst, priority in processes:
+            start = max(time, arrival)
+            end = start + burst
+            waiting_times.append(start - arrival)
+            turnaround_times.append(end - arrival)
+            gantt_sequence.append((pid, start, end))
+            time = end
 
-def main():
-    processes = [
-        ("P1", 0, 5, 2),
-        ("P2", 1, 3, 1),
-        ("P3", 2, 8, 3),
-        ("P4", 3, 6, 4)
-    ]
-    
-    print("Choose scheduling algorithm: 1. FCFS 2. SJF 3. Round Robin 4. Priority Scheduling")
-    choice = int(input("Enter choice (1-4): "))
-    
-    if choice == 1:
+        calculate_and_display(waiting_times, turnaround_times, gantt_sequence)
+
+    def sjf(processes):
+        processes.sort(key=lambda x: x[1])
+        completed, time, gantt_sequence = 0, 0, []
+        n = len(processes)
+        ready_queue = []
+        waiting_times, turnaround_times = [0]*n, [0]*n
+        visited = [False]*n
+
+        while completed < n:
+            for i in range(n):
+                if processes[i][1] <= time and not visited[i]:
+                    ready_queue.append((i, processes[i]))
+                    visited[i] = True
+
+            if ready_queue:
+                ready_queue.sort(key=lambda x: x[1][2])
+                idx, (pid, arrival, burst, priority) = ready_queue.pop(0)
+                start = time
+                end = time + burst
+                gantt_sequence.append((pid, start, end))
+                waiting_times[idx] = start - arrival
+                turnaround_times[idx] = end - arrival
+                time += burst
+                completed += 1
+            else:
+                time += 1
+
+        calculate_and_display(waiting_times, turnaround_times, gantt_sequence)
+
+    def priority_scheduling(processes):
+        processes.sort(key=lambda x: x[1])
+        completed, time, gantt_sequence = 0, 0, []
+        n = len(processes)
+        ready_queue = []
+        waiting_times, turnaround_times = [0]*n, [0]*n
+        visited = [False]*n
+
+        while completed < n:
+            for i in range(n):
+                if processes[i][1] <= time and not visited[i]:
+                    ready_queue.append((i, processes[i]))
+                    visited[i] = True
+
+            if ready_queue:
+                ready_queue.sort(key=lambda x: x[1][3])
+                idx, (pid, arrival, burst, priority) = ready_queue.pop(0)
+                start = time
+                end = time + burst
+                gantt_sequence.append((pid, start, end))
+                waiting_times[idx] = start - arrival
+                turnaround_times[idx] = end - arrival
+                time += burst
+                completed += 1
+            else:
+                time += 1
+
+        calculate_and_display(waiting_times, turnaround_times, gantt_sequence)
+
+    def round_robin(processes, quantum):
+        queue = sorted(processes, key=lambda x: x[1])
+        time = 0
+        remaining = {p[0]: p[2] for p in processes}
+        start_time = {p[0]: None for p in processes}
+        arrival_map = {p[0]: p[1] for p in processes}
+        burst_map = {p[0]: p[2] for p in processes}
+        gantt_sequence = []
+        from collections import deque
+        ready_queue = deque()
+        i = 0
+        n = len(processes)
+        completed = set()
+        waiting_times, turnaround_times = {}, {}
+
+        while len(completed) < n:
+            while i < n and processes[i][1] <= time:
+                ready_queue.append(processes[i])
+                i += 1
+            if not ready_queue:
+                time += 1
+                continue
+
+            pid, arrival, burst, priority = ready_queue.popleft()
+            if start_time[pid] is None:
+                start_time[pid] = time
+
+            run_time = min(quantum, remaining[pid])
+            start = time
+            end = time + run_time
+            gantt_sequence.append((pid, start, end))
+
+            time += run_time
+            remaining[pid] -= run_time
+
+            while i < n and processes[i][1] <= time:
+                ready_queue.append(processes[i])
+                i += 1
+
+            if remaining[pid] > 0:
+                ready_queue.append((pid, arrival, burst, priority))
+            else:
+                completed.add(pid)
+                turnaround_times[pid] = time - arrival
+                waiting_times[pid] = turnaround_times[pid] - burst
+
+        wt = list(waiting_times.values())
+        tat = list(turnaround_times.values())
+        calculate_and_display(wt, tat, gantt_sequence)
+
+    def calculate_and_display(waiting_times, turnaround_times, gantt_sequence):
+        avg_waiting_time = sum(waiting_times) / len(waiting_times)
+        avg_turnaround_time = sum(turnaround_times) / len(turnaround_times)
+
+        result = f"Average Waiting Time: {avg_waiting_time:.2f}\nAverage Turnaround Time: {avg_turnaround_time:.2f}"
+        result_text.delete(1.0, tk.END)
+        result_text.insert(tk.END, result)
+
+        draw_gantt_chart(gantt_sequence)
+
+    if algorithm == 'FCFS':
         fcfs(processes)
-    elif choice == 2:
+    elif algorithm == 'SJF':
         sjf(processes)
-    elif choice == 3:
-        quantum = int(input("Enter time quantum for Round Robin: "))
-        round_robin(processes, quantum)
-    elif choice == 4:
+    elif algorithm == 'Priority Scheduling':
         priority_scheduling(processes)
-    else:
-        print("Invalid choice!")
+    elif algorithm == 'Round Robin':
+        quantum = int(quantum_input.get())
+        round_robin(processes, quantum)
 
-if __name__ == "__main__":
-    main()
+def on_submit():
+    try:
+        processes = []
+        n = int(num_processes.get())
+        for i in range(n):
+            pid = pid_entries[i].get()
+            arrival = int(arrival_entries[i].get())
+            burst = int(burst_entries[i].get())
+            priority = int(priority_entries[i].get())
+            processes.append((pid, arrival, burst, priority))
+
+        algorithm = scheduling_algorithm.get()
+        if algorithm == 'Round Robin' and not quantum_input.get():
+            messagebox.showerror("Input Error", "Please enter the time quantum for Round Robin.")
+            return
+
+        calculate_metrics_and_display(processes, algorithm)
+    except ValueError:
+        messagebox.showerror("Input Error", "Please make sure all inputs are valid.")
+
+def generate_input_fields():
+    global pid_entries, arrival_entries, burst_entries, priority_entries
+    for widget in frame_inputs.winfo_children():
+        widget.destroy()
+    try:
+        n = int(num_processes.get())
+        pid_entries, arrival_entries, burst_entries, priority_entries = [], [], [], []
+        for i in range(n):
+            tk.Label(frame_inputs, text=f"P{i+1} PID:", font=("Aptos", 10)).grid(row=i, column=0, padx=5, pady=2)
+            pid = tk.Entry(frame_inputs)
+            pid.grid(row=i, column=1, padx=5, pady=2)
+            pid_entries.append(pid)
+
+            tk.Label(frame_inputs, text="Arrival Time:", font=("Aptos", 10)).grid(row=i, column=2, padx=5, pady=2)
+            arrival = tk.Entry(frame_inputs)
+            arrival.grid(row=i, column=3, padx=5, pady=2)
+            arrival_entries.append(arrival)
+
+            tk.Label(frame_inputs, text="Burst Time:", font=("Aptos", 10)).grid(row=i, column=4, padx=5, pady=2)
+            burst = tk.Entry(frame_inputs)
+            burst.grid(row=i, column=5, padx=5, pady=2)
+            burst_entries.append(burst)
+
+            tk.Label(frame_inputs, text="Priority Time:", font=("Aptos", 10)).grid(row=i, column=6, padx=5, pady=2)
+            priority = tk.Entry(frame_inputs)
+            priority.grid(row=i, column=7, padx=5, pady=2)
+            priority_entries.append(priority)
+    except ValueError:
+        messagebox.showerror("Input Error", "Please enter a valid number of processes.")
+
+# GUI Setup
+root = tk.Tk()
+root.title("CPU Scheduling Simulator")
+root.geometry("1000x800")
+root.configure(bg="#f0f0f0")
+
+tk.Label(root, text="CPU Scheduling Simulator", font=("Aptos", 16, "bold"), bg="#f0f0f0").pack(pady=15)
+
+tk.Label(root, text="Number of Processes:", bg="#f0f0f0", font=("Aptos", 12)).pack()
+num_processes = tk.Entry(root, font=("Aptos", 12))
+num_processes.pack()
+
+tk.Button(root, text="Generate Inputs", font=("Aptos", 11, "bold"), command=generate_input_fields, bg="#4CAF50", fg="white").pack(pady=10)
+
+frame_inputs = tk.Frame(root, bg="#f0f0f0")
+frame_inputs.pack()
+
+tk.Label(root, text="Select Scheduling Algorithm:", bg="#f0f0f0", font=("Aptos", 12)).pack(pady=5)
+scheduling_algorithm = ttk.Combobox(root, values=["FCFS", "SJF", "Round Robin", "Priority Scheduling"], font=("Aptos", 12))
+scheduling_algorithm.pack()
+
+tk.Label(root, text="Time Quantum (Round Robin):", bg="#f0f0f0", font=("Aptos", 12)).pack(pady=5)
+quantum_input = tk.Entry(root, font=("Aptos", 12))
+quantum_input.pack()
+
+tk.Button(root, text="Submit", font=("Aptos", 12, "bold"), bg="#2196F3", fg="white", command=on_submit).pack(pady=15)
+
+tk.Label(root, text="Results:", font=("Aptos", 12, "bold"), bg="#f0f0f0").pack()
+result_text = tk.Text(root, height=4, width=80, font=("Aptos", 12), bg="white")
+result_text.pack(pady=10)
+
+tk.Label(root, text="Gantt Chart:", font=("Aptos", 12, "bold"), bg="#f0f0f0").pack()
+gantt_canvas = tk.Canvas(root, width=900, height=100, bg="white", bd=2, relief="sunken")
+gantt_canvas.pack(pady=10)
+
+root.mainloop()
